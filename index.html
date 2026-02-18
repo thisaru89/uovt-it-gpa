@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UOVT IT Faculty Result Manager</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+
+    <div id="overlay" class="overlay" onclick="toggleMenu()"></div>
+    <div id="toast" class="toast">Action Successful</div>
+
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                Export Result Sheet
+                <span class="close-btn" onclick="closeExportModal()">×</span>
+            </div>
+            <p class="modal-desc">Select what to include in the PDF report.</p>
+            
+            <label class="export-option"><input type="checkbox" id="exp-year1" checked> Year 1 (Sem 1 & 2)</label>
+            <label class="export-option"><input type="checkbox" id="exp-year2" checked> Year 2 (Sem 3 & 4)</label>
+            <label class="export-option"><input type="checkbox" id="exp-year3" checked> Year 3 (Sem 5 & 6)</label>
+            
+            <button class="btn-primary full-width mt-20" onclick="generatePDF()">Generate PDF</button>
+        </div>
+    </div>
+
+    <div id="addSubModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            Add New Module
+            <span class="close-btn" onclick="closeAddModal()">×</span>
+        </div>
+        <p class="modal-desc">Add a missing or optional subject to the list.</p>
+        
+        <input type="hidden" id="targetSem"> <div class="mb-10">
+            <label class="lbl">Module Code</label>
+            <input type="text" id="newSubCode" class="profile-input" placeholder="e.g. IT305091">
+        </div>
+        
+        <div class="mb-10">
+            <label class="lbl">Module Name</label>
+            <input type="text" id="newSubName" class="profile-input" placeholder="e.g. Machine Learning">
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1;">
+                <label class="lbl">Credits</label>
+                <input type="number" id="newSubCr" class="profile-input" placeholder="3">
+            </div>
+            <div style="flex:1;">
+                <label class="lbl">Type</label>
+                <select id="newSubType" class="profile-input" style="border:none; border-bottom:1px solid var(--text-sub);">
+                    <option value="GPA">GPA</option>
+                    <option value="NG">Non-GPA</option>
+                </select>
+            </div>
+        </div>
+        
+        <button class="btn-primary full-width mt-20" onclick="saveNewSubject()">Add Module</button>
+    </div>
+</div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="brand"><span id="brand-text">UOVT Result Manager </span></div>
+        <button class="close-sidebar-btn" onclick="toggleMenu()"><i class="ph ph-x"></i></button>
+
+        <div class="degree-selector">
+            <label>DEGREE PROGRAM</label>
+            <select id="degSelect" onchange="switchDegree()">
+                <option value="software">Software Technology</option>
+                <option value="network">Network Technology</option>
+                <option value="multimedia">Multimedia & Web</option>
+            </select>
+        </div>
+
+        <div class="nav-item active" onclick="nav('dash', this)"><i class="ph ph-chart-pie-slice"></i> Dashboard</div>
+        <div class="nav-item" onclick="nav('year1', this)"><i class="ph ph-number-one"></i> Year 1</div>
+        <div class="nav-item" onclick="nav('year2', this)"><i class="ph ph-number-two"></i> Year 2</div>
+        <div class="nav-item" onclick="nav('year3', this)"><i class="ph ph-number-three"></i> Year 3</div>
+        <div class="nav-item" onclick="nav('tools', this)"><i class="ph ph-wrench"></i> Tools & Settings</div>
+
+        <div class="profile-section">
+            <div class="lbl">STUDENT PROFILE</div>
+            <input type="text" id="profName" class="profile-input" value=" Enter Name" onchange="saveProfile()">
+            <input type="text" id="profIndex" class="profile-input sub-input" value="ENTER INDEX " onchange="saveProfile()">
+        </div>
+        <div style="margin-top:20px; font-size:0.65rem; color:var(--text-sub); text-align:center; opacity:0.7;">
+    Designed & Developed by <br>
+    <a href="https://www.linkedin.com/in/thisaru-nayanajith-wijesinghe/" target="_blank" style="color:var(--primary); text-decoration:none; font-weight:600;">© Thisaru Nayanajith</a>
+</div>
+    </aside>
+
+    <div class="main-container">
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-btn" onclick="toggleMenu()"><i class="ph ph-list"></i></button>
+                <h2 id="pageTitle">Dashboard</h2>
+            </div>
+            <div class="header-right">
+                <button class="btn-icon" onclick="toggleTheme()"><i class="ph ph-moon"></i></button>
+                <button class="btn-primary" onclick="openExportModal()">Export PDF</button>
+            </div>
+        </header>
+
+        <div class="scroll-content">
+            <section id="dash" class="view-section active">
+                <div class="stats-grid">
+                    <div class="glass-card">
+                        <div class="stat-lbl">Overall GPA</div>
+                        <div class="stat-val" id="d-gpa">0.00</div>
+                        <div id="d-class" class="stat-sub">Incomplete</div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="stat-lbl">Credits (Active)</div>
+                        <div class="stat-val" id="d-cred">0</div>
+                        <div class="stat-desc">Calculated from checked subjects</div>
+                    </div>
+                    <div class="glass-card">
+                        <div class="stat-lbl">Next Goal</div>
+                        <div class="stat-val" id="d-target">...</div>
+                        <div class="stat-desc">Requirement</div>
+                    </div>
+                </div>
+                <div class="stats-grid charts-area">
+                    <div class="glass-card chart-card"><canvas id="gpaChart"></canvas></div>
+                    <div class="glass-card chart-card" style="display:flex; flex-direction:column;">
+    <div style="flex:1; position:relative; min-height: 0;">
+        <canvas id="credChart"></canvas>
+    </div>
+    <div id="grade-legend" class="chart-legend">
+        </div>
+</div>
+                </div>
+            </section>
+
+            <section id="year1" class="view-section"><div id="cont-sem1"></div><div id="cont-sem2" class="mt-20"></div></section>
+            <section id="year2" class="view-section"><div id="cont-sem3"></div><div id="cont-sem4" class="mt-20"></div></section>
+            <section id="year3" class="view-section"><div id="cont-sem5"></div><div id="cont-sem6" class="mt-20"></div></section>
+
+            <section id="tools" class="view-section">
+                <div class="stats-grid">
+                    <div class="glass-card">
+                        <h3 class="card-title text-primary">💾 Backup Data</h3>
+                        <button class="btn-primary full-width mb-10" onclick="exportData()">Download Backup</button>
+                        <button class="btn-icon full-width" onclick="document.getElementById('impFile').click()">Restore Backup</button>
+                        <input type="file" id="impFile" hidden onchange="importData(this)">
+                    </div>
+                    <div class="glass-card">
+                        <h3 class="card-title text-primary">🎯 Target Calc</h3>
+                        <div class="input-group">
+                            <input type="number" id="tGPA" placeholder="Goal (e.g. 3.30)">
+                            <button class="btn-primary" onclick="calcTarget()">Calc</button>
+                        </div>
+                        <div id="calcRes" class="calc-result"></div>
+                    </div>
+                    <div class="glass-card danger-zone">
+                        <h3 class="card-title text-danger">⚠️ Reset</h3>
+                        <button class="btn-icon btn-danger full-width" onclick="resetAll()">Factory Reset System</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker Registered!', reg.scope))
+                .catch(err => console.log('Service Worker Failed:', err));
+        });
+    }
+</script>
+</body>
+</html>
