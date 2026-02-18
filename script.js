@@ -293,6 +293,15 @@ function closeExportModal() { document.getElementById('exportModal').style.displ
 // script.js වල generatePDF function එක මේකෙන් replace කරන්න
 
 function generatePDF() {
+    // 1. දැනට තියෙන Theme එක චෙක් කරගන්නවා
+    const isDark = document.body.hasAttribute('data-theme');
+    
+    // 2. Dark Mode නම්, PDF එක හදන්න කලින් ඒක තාවකාලිකව ගලවනවා
+    if (isDark) {
+        document.body.removeAttribute('data-theme');
+    }
+
+    // පාට ටික (දැන් කොහොමත් Light Mode පාට තමයි variable එකට එන්නේ)
     const name = document.getElementById('profName').value;
     const index = document.getElementById('profIndex').value;
     const degree = document.getElementById('degSelect').options[document.getElementById('degSelect').selectedIndex].text;
@@ -301,14 +310,15 @@ function generatePDF() {
     const totalCred = document.getElementById('d-cred').innerText;
     const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
 
-    // PDF එකේ CSS (Styles)
-    // Table Header කැපෙන එක නවත්තන්න 'break-inside: avoid' පාවිච්චි කරමු
     let html = `
         <div style="font-family:'Helvetica', sans-serif; color:#000; padding:20px;">
             <style>
                 .sem-container { margin-bottom: 20px; }
                 .break-now { page-break-before: always; margin-top: 20px; }
                 tr { page-break-inside: avoid; }
+                /* PDF එක ඇතුලේ අනිවාර්යයෙන්ම කළු අකුරු බව තහවුරු කිරීම */
+                table, th, td { border-color: #ccc !important; color: #000000 !important; }
+                .grade-pill { color: #fff !important; }
             </style>
             
             <div style="text-align:center; margin-bottom:30px;">
@@ -343,7 +353,7 @@ function generatePDF() {
     years.forEach(year => {
         if(document.getElementById(year.id).checked) {
             year.sems.forEach(sem => {
-                const semData = getAllSubjects(sem); // Updated to use getAllSubjects
+                const semData = getAllSubjects(sem);
                 
                 let sCr=0, sPts=0;
                 let rows = '';
@@ -356,7 +366,7 @@ function generatePDF() {
                         else if(sub.t==='NG') gpVal='N/A';
                         
                         rows += `
-                            <tr style="border-bottom:1px solid #eee;">
+                            <tr style="border-bottom:1px solid #ccc;">
                                 <td style="padding:8px; font-size:12px;">${sub.c} ${sub.isCustom ? '*' : ''}</td>
                                 <td style="padding:8px; font-size:12px;">${sub.n}</td>
                                 <td style="padding:8px; text-align:center; font-size:12px;">${sub.cr}</td>
@@ -368,8 +378,6 @@ function generatePDF() {
                 });
 
                 const sgpa = sCr>0 ? (sPts/sCr).toFixed(2) : "0.00";
-                
-                // Page break logic: Add 'break-now' class if it's not the first block
                 const breakClass = isFirstBlock ? '' : 'break-now';
                 isFirstBlock = false;
 
@@ -382,16 +390,14 @@ function generatePDF() {
                         <table style="width:100%; border-collapse:collapse; border:1px solid #ccc; table-layout: fixed;">
                             <thead>
                                 <tr style="background:#f0f0f0; font-weight:bold; font-size:12px; -webkit-print-color-adjust: exact;">
-                                    <th style="padding:8px; border-bottom:1px solid #ccc; width:15%;">Code</th>
-                                    <th style="padding:8px; border-bottom:1px solid #ccc; width:50%;">Module</th>
-                                    <th style="padding:8px; text-align:center; border-bottom:1px solid #ccc; width:10%;">Credits</th>
-                                    <th style="padding:8px; text-align:center; border-bottom:1px solid #ccc; width:10%;">Grade</th>
-                                    <th style="padding:8px; text-align:right; border-bottom:1px solid #ccc; width:15%;">GPV</th>
+                                    <th style="padding:8px; border-bottom:1px solid #ccc; width:15%; color:#000;">Code</th>
+                                    <th style="padding:8px; border-bottom:1px solid #ccc; width:50%; color:#000;">Module</th>
+                                    <th style="padding:8px; text-align:center; border-bottom:1px solid #ccc; width:10%; color:#000;">Credits</th>
+                                    <th style="padding:8px; text-align:center; border-bottom:1px solid #ccc; width:10%; color:#000;">Grade</th>
+                                    <th style="padding:8px; text-align:right; border-bottom:1px solid #ccc; width:15%; color:#000;">GPV</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${rows}
-                            </tbody>
+                            <tbody>${rows}</tbody>
                         </table>
                     </div>
                 `;
@@ -399,14 +405,17 @@ function generatePDF() {
         }
     });
 
-    html += `<div style="text-align:center; font-size:10px; color:#999; margin-top:30px;">* Generated by UOVT IT Result Manager</div></div>`;
+html += `
+    <div style="border-top:1px solid #ccc; margin-top:30px; padding-top:10px; text-align:center; font-size:10px; color:#999;">
+        <span>Generated by UoVT IT Result Manager</span>
+    </div>
+</div>`;
 
     const opt = {
         margin: 10,
         filename: `UoVT_Result_Report_${index}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        // IMPORTANT: Smart Page Break Settings
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
@@ -414,6 +423,11 @@ function generatePDF() {
     html2pdf().set(opt).from(html).save().then(() => {
         closeExportModal();
         showToast("PDF Downloaded!");
+    }).finally(() => {
+        // 3. වැඩේ ඉවර වුණාම තිබ්බ Theme එක ආපහු දානවා
+        if (isDark) {
+            document.body.setAttribute('data-theme', 'dark');
+        }
     });
 }
 
